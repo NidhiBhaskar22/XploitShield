@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vulnerability {
+  id               Int      @id @default(autoincrement())
+  filePath         String
+  vulnerabilityType String
+  severity         String
+  confidenceScore  Float
+  detectedAt       DateTime @default(now())
+  aiPatches        AiPatch[]
+}
+
+model AiPatch {
+  id              Int           @id @default(autoincrement())
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+  vulnerabilityId Int
+  suggestedPatch  String
+  status          String
+  createdAt       DateTime      @default(now())
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  role         String
+  createdAt    DateTime @default(now())
+}
