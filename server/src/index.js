@@ -5,6 +5,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const githubRoutes = require("./routes/githubRoutes");
 const authRoutes = require("./routes/authRoutes");
+const iastMiddleware = require("./middlewares/iaInstrumentation");
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(iastMiddleware);
 
 app.use("/api/v1/github", githubRoutes);
 
