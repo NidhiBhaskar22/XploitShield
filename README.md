@@ -13,7 +13,7 @@ XploitShield is an automated security analysis tool that scans GitHub repositori
 - ⚡ REST API powered by Node.js and Express
 - 🔐 Supports secure Gemini API key management via `.env`
 
-### .env
+### .env:
 
 DATABASE_URL="YOUR-DATABASE-URL"  
 JWT_SECRET="YOUR-SECRET-KEY"  
