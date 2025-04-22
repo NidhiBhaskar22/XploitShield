@@ -13,6 +13,13 @@ XploitShield is an automated security analysis tool that scans GitHub repositori
 - ⚡ REST API powered by Node.js and Express
 - 🔐 Supports secure Gemini API key management via `.env`
 
-## 📁 Project Structure
+### .env
 
-XploitShield/ │ ├── client/ # Frontend application (if applicable) 🖥️ │ ├── server/ # Backend application 💻 │ ├── src/ │ │ ├── controllers/ # Logic for handling API requests 🎮 │ │ ├── routes/ # Express route definitions 📡 │ │ ├── utils/ # Gemini API integration & helper utilities ⚙️ │ │ └── config/ # Server and environment configurations ⚡ │ │ │ ├── .env # Environment variables (e.g., API keys) 🔑 │ └── server.js # Entry point for the backend server 🚀 │ └── README.md # Project documentation 📄
+DATABASE_URL = "YOUR-DATABASE-URL"
+JWT_SECRET = "YOUR-SECRET-KEY"
+MONGODB_URI = "YOUR-MONGODB-URI"
+GITHUB_TOKEN = YOUR-GITHUB-PAT
+GEMINI_API_KEY = YOUR-GEMINI-API-KEY
+
+
+
