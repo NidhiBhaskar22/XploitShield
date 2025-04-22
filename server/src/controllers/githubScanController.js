@@ -16,8 +16,146 @@ ${code}
 \`\`\`
 `;
   const result = await model.generateContent(prompt);
-  return result.response.text();
+  const analysisText = result.response.text();
+
+  // Parsing the analysis to structure it better for end users
+  const structuredAnalysis = parseAnalysis(analysisText);
+  return structuredAnalysis;
 }
+
+// Helper function to parse and simplify the analysis response
+function parseAnalysis(analysisText) {
+  const simplified = [];
+
+  const issues = analysisText.split("\n\n");
+
+  for (const issue of issues) {
+    const lines = issue.trim().split("\n");
+
+    const issueObj = {
+      description: "",
+      severity: "",
+      suggestedFix: "",
+    };
+
+    for (const line of lines) {
+      if (line.toLowerCase().includes("issue:")) {
+        issueObj.description = line.split(":").slice(1).join(":").trim();
+      } else if (line.toLowerCase().includes("severity:")) {
+        issueObj.severity = line.split(":").slice(1).join(":").trim();
+      } else if (
+        line.toLowerCase().includes("recommendation:") ||
+        line.toLowerCase().includes("suggested patch:")
+      ) {
+        issueObj.suggestedFix = line.split(":").slice(1).join(":").trim();
+      }
+    }
+
+    // ✅ Only push if there's meaningful content
+    if (issueObj.description || issueObj.suggestedFix) {
+      // Optional: default severity if missing
+      if (!issueObj.severity) issueObj.severity = "Low";
+
+      simplified.push(issueObj);
+    }
+  }
+
+  return simplified;
+}
+
+
+function mergeRelatedEntries(rawAnalysis) {
+  const entries = [];
+  let pendingEntry = null;
+
+  for (const item of rawAnalysis) {
+    const hasDescription = item.description && item.description.trim() !== "";
+    const hasFix = item.suggestedFix && item.suggestedFix.trim() !== "";
+
+    if (hasDescription && hasFix) {
+      entries.push(item); // Complete entry
+    } else if (hasDescription) {
+      pendingEntry = { ...item }; // Wait for fix
+    } else if (hasFix && pendingEntry) {
+      pendingEntry.suggestedFix = item.suggestedFix;
+      entries.push(pendingEntry);
+      pendingEntry = null;
+    } else if (hasFix) {
+      // Unmatched fix (rare, but keep)
+      entries.push(item);
+    }
+  }
+
+  // In case any leftover
+  if (pendingEntry) entries.push(pendingEntry);
+
+  return entries;
+}
+
+
+//-----------------POST PROCESSING-----------------
+function ensureCompleteAnalysis(input) {
+  for (const fileEntry of input.analysis) {
+    const fixedAnalysis = [];
+
+    for (const issue of fileEntry.analysis) {
+      let { description, suggestedFix } = issue;
+
+      // If description is missing, infer from suggestedFix
+      if (!description || description.trim() === "") {
+        description = inferDescriptionFromFix(suggestedFix);
+      }
+
+      // If still no valid description or fix, skip it
+      if (description && suggestedFix) {
+        fixedAnalysis.push({
+          description,
+          severity: issue.severity,
+          suggestedFix,
+        });
+      }
+    }
+
+    fileEntry.analysis = fixedAnalysis;
+  }
+
+  return input;
+}
+
+// Basic heuristic to infer what the issue is about
+function inferDescriptionFromFix(fix) {
+  if (!fix) return "";
+
+  const mappings = [
+    {
+      keyword: "sanitize",
+      desc: "Input is not sanitized and could lead to injection attacks.",
+    },
+    {
+      keyword: "escape",
+      desc: "Input may contain unsafe HTML that should be escaped.",
+    },
+    {
+      keyword: "UUID",
+      desc: "The current ID generation is not unique or secure.",
+    },
+    { keyword: "validation", desc: "Missing validation on input fields." },
+    {
+      keyword: "backend verification",
+      desc: "Missing backend verification for sensitive operations like deletion.",
+    },
+  ];
+
+  const lowerFix = fix.toLowerCase();
+  for (const { keyword, desc } of mappings) {
+    if (lowerFix.includes(keyword)) return `** ${desc}`;
+  }
+
+  // Default fallback
+  return "** A security concern has been flagged but lacks a specific description.";
+}
+
+
 
 exports.scanGithubRepo = async (req, res) => {
   const { owner, repo, branch } = req.body;
