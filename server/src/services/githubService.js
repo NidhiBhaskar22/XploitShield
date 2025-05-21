@@ -1,7 +1,5 @@
 const axios = require("axios");
 
-console.log("👉 GITHUB_TOKEN:", process.env.GITHUB_TOKEN); // Debug print
-
 const GITHUB_API = "https://api.github.com";
 
 const githubClient = axios.create({

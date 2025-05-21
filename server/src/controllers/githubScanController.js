@@ -7,8 +7,16 @@ const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
 
 async function scanWithGemini(filename, code) {
   const prompt = `
-You're an expert AI code security scanner. Analyze the following code file for vulnerabilities (SQLi, XSS, SSRF, Auth issues, etc.)
-and return the list of issues and suggested patches in markdown format.
+You are a professional application security analyst.
+
+Analyze the following JavaScript/TypeScript code file for **actual security vulnerabilities** (e.g., SQL Injection, XSS, CSRF, SSRF, Insecure Auth, Token leakage, etc.). Ignore minor coding issues or stylistic concerns.
+
+For each vulnerability, provide:
+- **Issue:** Short and clear title
+- **Severity:** High | Medium | Low
+- **Recommendation:** Practical fix or code change
+
+Respond in **strict markdown format**, separating each issue clearly.
 
 File: ${filename}
 \`\`\`
@@ -170,24 +178,45 @@ exports.scanGithubRepo = async (req, res) => {
     const tree = await getRepoTree(owner, repo, branch || "main");
     const results = [];
 
-    for (const file of tree) {
-      if (file.path.endsWith(".js") || file.path.endsWith(".ts")) {
-        const code = await getFileContent(owner, repo, file.path);
+   for (const file of tree) {
+     if (file.path.endsWith(".js") || file.path.endsWith(".ts")) {
+       const code = await getFileContent(owner, repo, file.path);
 
-        try {
-          const analysis = await scanWithGemini(file.path, code);
-          results.push({
-            file: file.path,
-            analysis,
-          });
-        } catch (e) {
-          results.push({
-            file: file.path,
-            analysis: `Gemini API error: ${e.message}`,
-          });
-        }
-      }
-    }
+       try {
+         let analysis = await scanWithGemini(file.path, code);
+
+         // If the analysis is empty or not an array, handle it gracefully
+         if (!Array.isArray(analysis) || analysis.length === 0) {
+           analysis = [
+             {
+               description: "No security issues detected in this file.",
+               severity: "None",
+               suggestedFix: "N/A",
+             },
+           ];
+         }
+
+         results.push({
+           file: file.path,
+           analysis,
+         });
+       } catch (e) {
+         results.push({
+           file: file.path,
+           analysis: [
+             {
+               description: `Gemini API error: ${e.message}`,
+               severity: "Error",
+               suggestedFix:
+                 "Try rerunning the scan or check API limits/configuration.",
+             },
+           ],
+         });
+       }
+     }
+   }
+
+
 
     res.json({ scanned_files: tree.length, analysis: results });
   } catch (err) {
